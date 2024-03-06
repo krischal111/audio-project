@@ -1,6 +1,5 @@
 import os
 from pprint import pprint
-from numpy.random import randint
 from pathlib import Path
 
 import torch
@@ -36,27 +35,29 @@ class AudioDatasetAt(Dataset):
         return self.transform(audio)
     
     def get_random(self):
+        from numpy.random import randint
         i = randint(self.len)
         print(f"Getting {i}th from the {len(self)} datasets.")
         return self[i]
 
-def fixed_length_audio_yielder(waveform, numSamples=64000):
-    idx = 0
-    size = waveform.shape[-1]
-    remaining = lambda : size - idx
-    while remaining() > numSamples:
-        yield waveform[:, idx: idx+numSamples]
-        idx += numSamples
+def fixed_length_audio_yielder(waveform, numSamples):
+    for i in range(waveform.shape[0]):
+        idx = 0
+        size = waveform.shape[-1]
+        remaining = lambda : size - idx
+        while remaining() > numSamples:
+            yield waveform[i, idx: idx+numSamples].unsqueeze(0)
+            idx += numSamples
     
-    if remaining():
-        padding = (0, numSamples-remaining())
-        yield F.pad(waveform[:, idx:], padding)
+        if remaining():
+            padding = (0, numSamples-remaining())
+            yield F.pad(waveform[i, idx:], padding).unsqueeze(0)
 
-def batch_yielder(batch, numSamples=64000):
+def batch_yielder(batch, numSamples):
     for waveform in batch:
         yield from fixed_length_audio_yielder(waveform, numSamples)
 
-def my_collater(batch, numSamples=64000):
+def my_collater(batch, numSamples=96000):
     return torch.stack(list((batch_yielder(batch, numSamples))))
     
 
