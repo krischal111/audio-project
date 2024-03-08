@@ -19,7 +19,8 @@ def train_one_epoch(model, lossfn, optimizer, trainloader, debug=False):
     device = next(model.parameters()).device
 
     i = 0
-    train_loss = 0
+    train_losses = []
+    total_train_loss = 0
     train_size = 0
     start = time()
     model.train()
@@ -31,7 +32,6 @@ def train_one_epoch(model, lossfn, optimizer, trainloader, debug=False):
         # Prediction Part
         reconstruction = model(x)
         loss = lossfn(reconstruction, x)
-        # loss = torch.sum(reconstruction,dim=-1)
 
         # Optimization Part
         optimizer.zero_grad()
@@ -39,7 +39,9 @@ def train_one_epoch(model, lossfn, optimizer, trainloader, debug=False):
         optimizer.step()
 
         # Save loss data Part
-        train_loss += loss.cpu().detach().numpy()
+        train_loss = loss.cpu().detach().numpy()
+        total_train_loss += train_loss
+        train_losses.append(train_loss)
         train_size += x.shape[0]
 
         if debug:
@@ -48,7 +50,7 @@ def train_one_epoch(model, lossfn, optimizer, trainloader, debug=False):
     
     end = time()
     totaltime = end - start
-    loss = train_loss/train_size
+    loss = total_train_loss/train_size
 
     if debug:
         print(f"Time taken = {time} s, and train loss = {loss}")

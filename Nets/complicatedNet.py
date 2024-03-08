@@ -18,9 +18,11 @@ class ConvolutionalStack(nn.Module):
         super().__init__()
         self.ELU1 = nn.ELU()
         self.Conv1 = LazyCausalConv1d(out_channels, kernel_size=k_size, stride=stride, dilation=dilation)
+        self.BNorm1 = nn.LazyBatchNorm1d()
     def forward(self, x):
         x = self.ELU1(x)
         x = self.Conv1(x)
+        x = self.BNorm1(x)
         return x
 
 class Down(nn.Module):
@@ -89,10 +91,9 @@ class Encoder(nn.Module):
     def __init__(self, steps):
         super().__init__()
         self.encoder = nn.Sequential(
+            Down(out_channels=4, k_size=11, factor=2),
             Down(out_channels=16, k_size=11, factor=2),
-            Down(out_channels=32, k_size=11, factor=2),
             Down(out_channels=64, k_size=11, factor=2),
-            Down(out_channels=128, k_size=11, factor=2),
             Down(out_channels=256, k_size=11, factor=2),
         )
     def forward(self, x):
@@ -102,10 +103,9 @@ class Decoder(nn.Module):
     def __init__(self, steps):
         super().__init__()
         self.decoder = nn.Sequential(
-            Up(out_channels=128, k_size=11, factor=2),
             Up(out_channels=64, k_size=11, factor=2),
-            Up(out_channels=32, k_size=11, factor=2),
             Up(out_channels=16, k_size=11, factor=2),
+            Up(out_channels=4, k_size=11, factor=2),
             Up(out_channels=1, k_size=11, factor=2),
         )
     def forward(self, x):
@@ -115,13 +115,17 @@ class Decoder(nn.Module):
 class LossFunction(nn.Module):
     def __init__(self, srate=32000):
         super().__init__()
-        self.tf1 = torchaudio.transforms.MelSpectrogram(srate)
-        self.tf2 = torchaudio.transforms.MelSpectrogram(srate)
-        self.MSELoss = nn.MSELoss()
+        self.tf1 = torchaudio.transforms.Spectrogram(srate)
+        self.tf2 = torchaudio.transforms.Spectrogram(srate)
+        self.spectral_loss = nn.SmoothL1Loss()
+        self.waveform_loss = nn.MSELoss()
 
     def forward(self, x, recons):
-        loss = self.MSELoss(self.tf1(x), self.tf2(recons))
-        print(loss)
+        device = 'cpu'
+        x = x.to(device)
+        recons = recons.to(device)
+        loss = .0001*self.spectral_loss(self.tf1(x), self.tf2(recons))
+        loss += self.waveform_loss(recons, x)
         return loss
 
 
