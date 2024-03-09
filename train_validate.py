@@ -31,7 +31,6 @@ class timeclass:
         Time for validation: {valid}
     '''
 
-
 def train_and_validate_simul(model:nn.Module, lossfn, optimizer, trainloader, validationloader, debug=False):
     if debug:
         print("Training for an epoch")
