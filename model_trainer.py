@@ -115,7 +115,7 @@ def train_and_validate(model:nn.Module, lossfn, optimizer, trainloader, validati
         "ValidationForwardTimes":validation_forward_times,
     }
 
-def save_mode(model : nn.Module, name : str, statistics : dict = None):
+def save_model(model : nn.Module, name : str, statistics : dict = None):
     ''' 
     model: The model to be saved.
     statistics: The dictionary type with series of train losses and validation losses.

@@ -124,7 +124,7 @@ class LossFunction(nn.Module):
         device = 'cpu'
         x = x.to(device)
         recons = recons.to(device)
-        loss = .0001*self.spectral_loss(self.tf1(x), self.tf2(recons))
+        # loss = .0001*self.spectral_loss(self.tf1(x), self.tf2(recons))
         loss += self.waveform_loss(recons, x)
         return loss
 
