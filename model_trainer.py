@@ -92,6 +92,10 @@ def train_and_validate(model:nn.Module, lossfn, optimizer, trainloader, validati
         i += 1
         if limit and i > limit:
             break
+
+        if debug:
+            print(f"\nBatch {i}:")
+            print("===============", end=None)
         
         train_loss, train_forward_time, back_prop_time = train_one_batch(model, lossfn, optimizer, trainx, debug)
         train_losses.append(train_loss)
