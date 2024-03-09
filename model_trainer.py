@@ -14,7 +14,7 @@ def train_one_batch(model, lossfn, optimizer, x, debug=False):
     starttime = time()
 
     if debug:
-        print("\nTraining step:")
+        print("Training step:")
         print("Forward propagating... ", end=None)
     pred = model(x)
     loss = lossfn(pred, x)
@@ -95,7 +95,7 @@ def train_and_validate(model:nn.Module, lossfn, optimizer, trainloader, validati
 
         if debug:
             print(f"\nBatch {i}:")
-            print("===============", end=None)
+            print("==========")
         
         train_loss, train_forward_time, back_prop_time = train_one_batch(model, lossfn, optimizer, trainx, debug)
         train_losses.append(train_loss)
