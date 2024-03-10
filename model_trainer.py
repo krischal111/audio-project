@@ -117,8 +117,42 @@ def train_and_validate(model:nn.Module, lossfn, optimizer, trainloader, validati
         "TrainForwardTimes":train_forward_times,
         "BackPropTimes":back_prop_times,
         "ValidationForwardTimes":validation_forward_times,
+        "NBatches": i,
     }
     return statistics
+
+def null_stats():
+    statistics = {
+        "TrainLosses":[],
+        "ValidationLosses":[],
+        "TotalTrainLoss":0,
+        "TotalValidationLoss":0,
+        "TrainForwardTimes":[],
+        "BackPropTimes":[],
+        "ValidationForwardTimes":[],
+        "NBatches": 0,
+    }
+    return statistics
+
+def concatenate_stats(stat1, stat2):
+    l1 = stat1["NBatches"]
+    l2 = stat2["NBatches"]
+    n = l1 + l2
+    l1 /= n
+    l2 /= n
+    concatenated_statistics = {
+        "TrainLosses": [*stat1["TrainLosses"], *stat2["TrainLosses"],],
+        "ValidationLosses":[*stat1["ValidationLosses"], *stat2["ValidationLosses"],],
+        "TrainForwardTimes":stat1["TrainForwardTimes"] + stat2["TrainForwardTimes"],
+        "BackPropTimes":stat1["BackPropTimes"] + stat2["BackPropTimes"],
+        "ValidationForwardTimes":stat1["ValidationForwardTimes"] + stat2["ValidationForwardTimes"],
+
+        "TotalTrainLoss":stat1["TotalTrainLoss"] *l1 + stat2["TotalTrainLoss"] * l2,
+        "TotalValidationLoss":stat1["TotalValidationLoss"] + stat2["TotalValidationLoss"],
+        "NBatches": n,
+    }
+    return concatenated_statistics
+    
 
 def save_model(model : nn.Module, name : str, statistics : dict = None):
     ''' 
