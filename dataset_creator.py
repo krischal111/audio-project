@@ -53,6 +53,12 @@ def my_collater(df, numSamples):
 from torch.utils.data import Dataset
 from torch import nn
 
+def get_random(dataset) -> torch.Tensor:
+    from numpy.random import randint
+    idx = randint(len(dataset))
+    print(f"Getting {idx}th item from the {len(dataset)} datasets.")
+    return dataset[idx]
+
 class AudioDatasetAt(Dataset):
     def __init__(self, folder, srate=32000, split_duration=3,transform = nn.Identity(), limit=0):
         self.folder = folder
@@ -68,10 +74,7 @@ class AudioDatasetAt(Dataset):
         return selector(self.files_df.iloc[index], self.numSamples)
     
     def get_random(self) -> torch.Tensor:
-        from numpy.random import randint
-        idx = randint(len(self))
-        print(f"Getting {idx}th item from the {len(self)} datasets.")
-        return self[idx]
+        return get_random(self)
 
 def split_dataset(dataset: Dataset, split_ratios, seed=None):
     seed = seed if seed is not None else 42

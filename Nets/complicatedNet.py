@@ -121,11 +121,12 @@ class LossFunction(nn.Module):
         self.waveform_loss = nn.MSELoss()
 
     def forward(self, x, recons):
-        device = 'cpu'
-        x = x.to(device)
-        recons = recons.to(device)
-        loss = torch.Tensor([0])
-        loss = .0001*self.spectral_loss(self.tf1(x), self.tf2(recons))
+        # device = next(self.parameters()).device()
+
+        # x = x.to(device)
+        # recons = recons.to(device)
+        loss = torch.Tensor([0]).to(x.device)
+        # loss = .0001*self.spectral_loss(self.tf1(x), self.tf2(recons))
         loss += self.waveform_loss(recons, x)
         return loss
 

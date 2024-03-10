@@ -118,6 +118,7 @@ def train_and_validate(model:nn.Module, lossfn, optimizer, trainloader, validati
         "BackPropTimes":back_prop_times,
         "ValidationForwardTimes":validation_forward_times,
     }
+    return statistics
 
 def save_model(model : nn.Module, name : str, statistics : dict = None):
     ''' 
