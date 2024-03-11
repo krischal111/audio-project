@@ -91,8 +91,8 @@ class Quantizer(nn.Module):
 class LossFunction(nn.Module):
     def __init__(self, srate=32000):
         super().__init__()
-        self.tf1 = torchaudio.transforms.Spectrogram(srate)
-        self.tf2 = torchaudio.transforms.Spectrogram(srate)
+        self.tf1 = torchaudio.transforms.Spectrogram(srate, normalized=True)
+        self.tf2 = torchaudio.transforms.Spectrogram(srate, normalized=True)
         self.spectral_loss = nn.SmoothL1Loss()
         self.waveform_loss = nn.MSELoss()
 
@@ -104,7 +104,7 @@ class LossFunction(nn.Module):
         x = x[:, :, 100*150:]
         recons = recons[:, :, 100*150:]
         loss = torch.Tensor([0]).to(x.device)
-        loss = .0001*self.spectral_loss(self.tf1(x), self.tf2(recons))
+        loss = .001*self.spectral_loss(self.tf1(x), self.tf2(recons))
         loss += self.waveform_loss(recons, x)
         return loss
 
