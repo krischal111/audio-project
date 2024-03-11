@@ -110,7 +110,7 @@ class LossFunction(nn.Module):
         loss += self.stft_loss(x, recons)
         loss += self.esrloss(x, recons)
         loss += self.dcloss(x, recons)
-        loss += .1 * self.MSELoss(x, recons)
+        loss += .1 * self.recons_loss(x, recons)
 
         return loss
 
