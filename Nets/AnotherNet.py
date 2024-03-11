@@ -12,11 +12,11 @@ from Nets.causalConv import LazyCausalConv1d, CausalPoolingDoubleFactor
 class ConvolutionalStack(nn.Module):
     def __init__(self, out_channels, k_size, dilation=1):
         super().__init__()
-        self.BNorm1 = nn.LazyBatchNorm1d()
+        # self.BNorm1 = nn.LazyBatchNorm1d()
         self.ELU1 = nn.ELU()
         self.Conv1 = LazyCausalConv1d(out_channels, kernel_size=k_size, dilation=dilation)
     def forward(self, x):
-        x = self.BNorm1(x)
+        # x = self.BNorm1(x)
         x = self.ELU1(x)
         x = self.Conv1(x)
         return x
