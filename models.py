@@ -24,3 +24,6 @@ class allNet(nn.Module):
         # print("After quantizing", x.shape)
         x = self.decoder(x)
         return x
+
+def get_optimizer(model):
+    return torch.optim.Adam(model.parameters(), lr=3 * 1e-4, betas=(0.5, 0.9))
