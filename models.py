@@ -11,10 +11,16 @@ class allNet(nn.Module):
         self.quantizer = quantizer
         self.decoder = decoder
     
+    def train_forward(self, x):
+        x = self.encoder(x)
+        x , q_loss = self.quantizer(x)
+        x = self.decoder(x)
+        return x, q_loss
+    
     def forward(self, x):
         x = self.encoder(x)
         # print("Before quantiziing", x.shape)
-        x = self.quantizer(x)
+        x , _ = self.quantizer(x)
         # print("After quantizing", x.shape)
         x = self.decoder(x)
         return x

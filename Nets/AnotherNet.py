@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 import torchaudio
 import vector_quantize_pytorch
+import auraloss
 
 import Nets.causalConv as causalConv
 reload(causalConv)
@@ -84,17 +85,18 @@ class Quantizer(nn.Module):
         self.quantizer = vector_quantize_pytorch.VectorQuantize(16, 65536)
     
     def forward(self, x):
-        x, _, _ =  self.quantizer(x.transpose(-1, -2))
-        return x.transpose(-2, -1)
+        x, _, loss =  self.quantizer(x.transpose(-1, -2))
+        return x.transpose(-2, -1), loss
 
 
 class LossFunction(nn.Module):
     def __init__(self, srate=32000):
         super().__init__()
-        self.tf1 = torchaudio.transforms.Spectrogram(srate, normalized=True)
-        self.tf2 = torchaudio.transforms.Spectrogram(srate, normalized=True)
-        self.spectral_loss = nn.SmoothL1Loss()
-        self.waveform_loss = nn.MSELoss()
+        # self.tf1 = torchaudio.transforms.Spectrogram(srate, normalized=True)
+        # self.tf2 = torchaudio.transforms.Spectrogram(srate, normalized=True)
+        # self.spectral_loss = nn.SmoothL1Loss()
+        # self.waveform_loss = nn.MSELoss()
+        self.stft_loss = auraloss.freq.STFTLoss()
 
     def forward(self, x, recons):
         # device = next(self.parameters()).device()
@@ -104,8 +106,9 @@ class LossFunction(nn.Module):
         x = x[:, :, 100*150:]
         recons = recons[:, :, 100*150:]
         loss = torch.Tensor([0]).to(x.device)
-        loss = .001*self.spectral_loss(self.tf1(x), self.tf2(recons))
-        loss += self.waveform_loss(recons, x)
+        loss += self.stft_loss(x, recons)
+        # loss = .001*self.spectral_loss(self.tf1(x), self.tf2(recons))
+        # loss += self.waveform_loss(recons, x)
         return loss
 
 

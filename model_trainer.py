@@ -16,8 +16,8 @@ def train_one_batch(model, lossfn, optimizer, x, debug=False):
     if debug:
         print("Training step:")
         print("Forward propagating... ", end=None)
-    pred = model(x)
-    loss = lossfn(pred, x)
+    pred, qloss = model.train_forward(x)
+    loss = lossfn(pred, x) + qloss
 
     forwarddonetime = time()
     forward_time = forwarddonetime - starttime
@@ -55,8 +55,8 @@ def validate_one_batch(model, lossfn, x, debug=False):
         if debug:
             print("Validation step:")
             print("Forward propagating... ", end=None)
-        pred = model(x)
-        loss = lossfn(pred, x)
+        pred, qloss = model.train_forward(x)
+        loss = lossfn(pred, x) + qloss
 
         forwarddonetime = time()
         forward_time = forwarddonetime - starttime
