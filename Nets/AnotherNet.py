@@ -97,16 +97,17 @@ class LossFunction(nn.Module):
         # self.spectral_loss = nn.SmoothL1Loss()
         # self.waveform_loss = nn.MSELoss()
         self.stft_loss = auraloss.freq.STFTLoss()
+        self.esrloss = auraloss.time.ESRLoss()
+        self.dcloss = auraloss.time.DCLoss()
 
     def forward(self, x, recons):
-        # device = next(self.parameters()).device()
 
-        # x = x.to(device)
-        # recons = recons.to(device)
         x = x[:, :, 100*150:]
         recons = recons[:, :, 100*150:]
         loss = torch.Tensor([0]).to(x.device)
         loss += self.stft_loss(x, recons)
+        loss += self.esrloss(x, recons)
+        loss += self.dcloss(x, recons)
         # loss = .001*self.spectral_loss(self.tf1(x), self.tf2(recons))
         # loss += self.waveform_loss(recons, x)
         return loss

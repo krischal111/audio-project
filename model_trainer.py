@@ -190,9 +190,11 @@ def retrieve_model(model, model_path):
 
     if model_file.exists():
         model.load_state_dict(torch.load(model_file))
+        print(f"Model loaded from {model_file}")
     else:
         raise FileNotFoundError("Model file doesn't exist!")
 
     if statistics_file.exists():
         stats = torch.load(statistics_file)
+        print(f"Statistics loaded from {statistics_file}")
         return stats
