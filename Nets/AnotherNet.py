@@ -1,93 +1,67 @@
+from importlib import reload
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import torchaudio
+import vector_quantize_pytorch
 
-class LazyCausalConv1d(nn.Module):
-    def __init__(self, out_channels, kernel_size, stride=1, dilation=1):
-        super().__init__()
-        self.causal_padding_left = (dilation) * (kernel_size-1)
-        self.lazyLayer = nn.LazyConv1d(out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
-
-    def forward(self, x):
-        return self.lazyLayer(F.pad(x, [self.causal_padding_left, 0])) #, self.weight, self.bias)
-
+import Nets.causalConv as causalConv
+reload(causalConv)
+from Nets.causalConv import LazyCausalConv1d, CausalPoolingDoubleFactor
 
 class ConvolutionalStack(nn.Module):
-    def __init__(self, out_channels, k_size, stride=1, dilation=1):
+    def __init__(self, out_channels, k_size, dilation=1):
         super().__init__()
         self.BNorm1 = nn.LazyBatchNorm1d()
         self.ELU1 = nn.ELU()
-        self.Conv1 = LazyCausalConv1d(out_channels, kernel_size=k_size, stride=stride, dilation=dilation)
+        self.Conv1 = LazyCausalConv1d(out_channels, kernel_size=k_size, dilation=dilation)
     def forward(self, x):
         x = self.BNorm1(x)
         x = self.ELU1(x)
         x = self.Conv1(x)
         return x
 
-class Down(nn.Module):
+class ResidualDown(nn.Module):
     def __init__(self, out_channels, k_size, factor=2):
         super().__init__()
-        self.InConv = nn.LazyConv1d(out_channels, 1)
         self.Conv1 = ConvolutionalStack(out_channels, k_size=k_size, dilation=1)
-        self.Conv2 = ConvolutionalStack(out_channels, k_size=k_size, dilation=2)
-        self.Conv3 = ConvolutionalStack(out_channels, k_size=k_size, dilation=4)
-        self.Conv4 = ConvolutionalStack(out_channels, k_size=k_size, dilation=8)
-        self.Pooling = nn.AvgPool1d(factor,factor)
-        self.Residual = nn.LazyConv1d(out_channels, kernel_size=factor, stride=factor)
+        self.Conv2 = ConvolutionalStack(out_channels, k_size=k_size, dilation=3)
+        self.Conv3 = ConvolutionalStack(out_channels, k_size=k_size, dilation=9)
+        self.StridedConvLayer = LazyCausalConv1d(out_channels, kernel_size=2*factor, stride=factor)
     
     def forward(self, x):
-        oldx = x
-        x = self.InConv(x)
-        x = self.Conv1(x)
-        x = self.Conv2(x)
-        x = self.Conv3(x)
-        x = self.Conv4(x)
-        x = self.Pooling(x)
-        newx = self.Residual(oldx)
-        x += newx
-        return x
-
-        # try:
-        # # except:
-        #     print("At Down")
-        #     print(x.shape, newx.shape)
-        #     some_shit = "error"
-        #     raise some_shit
+        x = x0 = x
+        x = x1 = self.Conv1(x)
+        x = x2 = self.Conv2(torch.cat([x0, x1], dim=-2))
+        x = x3 = self.Conv3(torch.cat([x0, x1, x2], dim=-2))
+        x = x4 = self.StridedConvLayer(torch.cat([x0, x1, x2, x3], dim=-2))
+        return x4
     
-class Up(nn.Module):
+class ResidualUp(nn.Module):
     def __init__(self, out_channels, k_size, factor=2):
         super().__init__()
-        self.Upsampler = nn.Upsample(scale_factor=factor)
-        self.InConv = nn.LazyConv1d(out_channels, 1)
+        self.Upsampler = nn.Upsample(scale_factor=factor, mode='linear')
         self.Conv1 = ConvolutionalStack(out_channels, k_size, dilation=1)
-        self.Conv2 = ConvolutionalStack(out_channels, k_size, dilation=2)
-        self.Conv3 = ConvolutionalStack(out_channels, k_size, dilation=4)
-        self.Conv4 = ConvolutionalStack(out_channels, k_size, dilation=8)
+        self.Conv2 = ConvolutionalStack(out_channels, k_size, dilation=3)
+        self.Conv3 = ConvolutionalStack(out_channels, k_size, dilation=9)
         self.Residual = nn.LazyConv1d(out_channels, 1)
     
     def forward(self, x):
-        # print("Before upsampling", x.shape)
-        x = self.Upsampler(x)
-        # print("After upsampling", x.shape)
-        oldx = x
-        x = self.InConv(x)
-        x = self.Conv1(x)
-        x = self.Conv2(x)
-        x = self.Conv3(x)
-        x = self.Conv4(x)
-        newx = self.Residual(oldx)
-        x += newx
-        return x
+        x = x0 = self.Upsampler(x)
+        x = x1 = self.Conv1(x)
+        x = x2 = self.Conv2(torch.cat([x0, x1], dim = -2))
+        x = x3 = self.Conv3(torch.cat([x0, x1, x2], dim=-2))
+        x = x4 = self.Residual(torch.cat([x0, x1, x2, x3], dim=-2))
+        return x4
 
 class Encoder(nn.Module):
     def __init__(self, steps):
         super().__init__()
         self.encoder = nn.Sequential(
-            Down(out_channels=4, k_size=11, factor=2),
-            Down(out_channels=16, k_size=11, factor=2),
-            Down(out_channels=64, k_size=11, factor=2),
-            Down(out_channels=256, k_size=11, factor=2),
+            ResidualDown(out_channels=2, k_size=11, factor=2),
+            ResidualDown(out_channels=4, k_size=11, factor=2),
+            ResidualDown(out_channels=8, k_size=11, factor=2),
+            ResidualDown(out_channels=16, k_size=11, factor=5),
         )
     def forward(self, x):
         return self.encoder(x)
@@ -96,13 +70,22 @@ class Decoder(nn.Module):
     def __init__(self, steps):
         super().__init__()
         self.decoder = nn.Sequential(
-            Up(out_channels=64, k_size=11, factor=2),
-            Up(out_channels=16, k_size=11, factor=2),
-            Up(out_channels=4, k_size=11, factor=2),
-            Up(out_channels=1, k_size=11, factor=2),
+            ResidualUp(out_channels=8, k_size=11, factor=5),
+            ResidualUp(out_channels=4, k_size=11, factor=2),
+            ResidualUp(out_channels=2, k_size=11, factor=2),
+            ResidualUp(out_channels=1, k_size=11, factor=2),
         )
     def forward(self, x):
         return self.decoder(x)
+
+class Quantizer(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.quantizer = vector_quantize_pytorch.VectorQuantize(16, 65536)
+    
+    def forward(self, x):
+        x, _, _ =  self.quantizer(x.transpose(-1, -2))
+        return x.transpose(-2, -1)
 
 
 class LossFunction(nn.Module):
@@ -118,8 +101,10 @@ class LossFunction(nn.Module):
 
         # x = x.to(device)
         # recons = recons.to(device)
+        x = x[:, :, 100*150:]
+        recons = recons[:, :, 100*150:]
         loss = torch.Tensor([0]).to(x.device)
-        loss = .00001*self.spectral_loss(self.tf1(x), self.tf2(recons))
+        loss = .0001*self.spectral_loss(self.tf1(x), self.tf2(recons))
         loss += self.waveform_loss(recons, x)
         return loss
 
